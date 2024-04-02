@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph Search</title>
+<!-- Підключення бібліотеки vis.js -->
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/vis-network/standalone/umd/vis-network.min.css">
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f3f3f3;
+    margin: 0;
+    padding: 0;
+  }
+
+  #container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+
+  h1 {
+    color: #333;
+    margin-bottom: 20px;
+  }
+
+  label {
+    font-size: 18px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  input {
+    width: 200px;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+
+  #output {
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    text-align: left;
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-wrap: break-word;
+    margin-bottom: 20px;
+  }
+
+  #graph {
+    width: 800px;
+    height: 400px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+<div id="container">
+  <h1>Graph Search</h1>
+  <label for="input">Choose a top: </label>
+  <input id="input" type="text" oninput="startSearch(this.value)">
+  <div id="output"></div>
+  <div id="graph"></div>
+</div>
+
+<script>
+  class Top {
+    constructor(name) {
+      this.name = name;
+      this.children = [];
+      this.visited = false;
+    }
+
+    addChildren(top) {
+      this.children.push(top);
+      top.children.push(this);
+      return this;
+    }
+  }
+
+  function getGraphs() {
+    const tops = Array(8).fill(null).map((_, i) => new Top(`Top ${i}`));
+
+    tops[0].addChildren(tops[3]).addChildren(tops[0]);
+    tops[0].addChildren(tops[1]).addChildren(tops[2]);
+    tops[2].addChildren(tops[6]).addChildren(tops[2]).addChildren(tops[1]);
+    tops[1].addChildren(tops[5]).addChildren(tops[1]);
+    tops[0].addChildren(tops[1]).addChildren(tops[4]);
+    tops[4].addChildren(tops[7]);
+
+    return tops;
+  }
+
+  function searchUnvisited(top) {
+    for (let i = 0; i < top.children.length; i++) {
+      if (!top.children[i].visited) {
+        top.children[i].visited = true;
+        return top.children[i];
+      }
+    }
+    return new Top("");
+  }
+
+  function allVisited(tops) {
+    return tops.every(visit => visit.visited);
+  }
+
+  function searchInDepth(tops, index) {
+    const stack = [];
+
+    tops[index].visited = true;
+    stack.push(tops[index]);
+
+    let output = `Graph Traversal <br>START WITH TOP ${index}<br>`;
+    while (true) {
+      const ntop = searchUnvisited(stack[stack.length - 1]);
+
+      output += "Visit the -> " + stack[stack.length - 1].name + "<br>";
+      if (ntop.name === "") {
+        if (allVisited(tops)) {
+          output += "Done.";
+          break;
+        }
+        output += "Pop top from stack <- " + stack[stack.length - 1].name + "<br>";
+        stack.pop();
+      } else {
+        output += "Step: " + stack[stack.length - 1].name + "<br>";
+        stack.push(ntop);
+        output += stack[stack.length - 1].name + "<br>";
+      }
+    }
+    document.getElementById("output").innerHTML = output;
+
+    // Виклик функції для створення графа
+    createGraph(tops);
+  }
+
+  function startSearch(value) {
+    const selectedIndex = parseInt(value);
+    if (!isNaN(selectedIndex) && selectedIndex >= 0 && selectedIndex < getGraphs().length) {
+      searchInDepth(getGraphs(), selectedIndex);
+    } else {
+      document.getElementById("output").innerHTML = "ERROR";
+    }
+  }
+
+  // Функція для створення графа
+  function createGraph(tops) {
+   
+    const nodes = tops.map((top, index) => ({ id: index, label: top.name }));
+    const edges = tops.reduce((acc, top, index) => {
+      top.children.forEach(child => {
+        acc.push({ from: index, to: tops.indexOf(child) });
+      });
+      return acc;
+    }, []);
+
+    const container = document.getElementById("graph");
+    const data = { nodes, edges };
+    const options = {};
+
+    const network = new vis.Network(container, data, options);
+  }
+</script>
+</body>
+</html>
